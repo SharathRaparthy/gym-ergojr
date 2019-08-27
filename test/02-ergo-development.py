@@ -62,7 +62,7 @@ for i in range(len(motors)):
 start = time.time()
 
 # Stepping frequency * 30 = run the simulation for 30 seconds
-for i in range(frequency * 30):
+for i in range(frequency * 300):
     motorPos = []
 
     # At each timestep, read the values from the motor sliders and set the motors to that position
@@ -77,7 +77,9 @@ for i in range(frequency * 30):
         motorPos.append(pos)
         p.setJointMotorControl2(
             robot, motors[i], p.POSITION_CONTROL, targetPosition=pos)
-
+    tip = 13
+    state = p.getLinkState(robot, tip)
+    print(state[0])
     p.stepSimulation()
 
     # If you don't sleep, the simulation will run much faster, up to several thousand cycles per second.

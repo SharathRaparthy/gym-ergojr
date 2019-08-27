@@ -18,7 +18,7 @@ RESET_EVERY = 5  # for the gripper
 class ErgoReacherEnv(gym.Env):
 
   def __init__(self,
-               headless=True,
+               headless=False,
                simple=False,
                backlash=False,
                max_force=1,
@@ -247,6 +247,7 @@ if __name__ == '__main__':
     while True:
       action = env.action_space.sample()
       obs, rew, done, misc = env.step(action)
+      print(obs)
       # obs, rew, done, misc = env.step([17/90,-29/90,-33/90,-61/90])
 
       if MODE == "manual":
