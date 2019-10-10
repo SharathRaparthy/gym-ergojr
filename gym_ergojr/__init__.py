@@ -2,11 +2,26 @@ import os
 
 from gym.envs.registration import register
 
-_ROOT = os.path.abspath(os.path.dirname(__file__))
-
-
 def get_scene(name):
     return os.path.join(_ROOT, "scenes", name)
+
+
+def change_scene(name):
+    return os.path.join(_ROOT, "scenes", name)
+
+
+def mpi_loading(rank, robot_model):
+    xml_path = get_scene(robot_model)
+    if robot_model is not None:
+        reference_path = et.parse(xml_path + '.xacro.xml')
+    root = reference_path.getroot()
+    xml = et.tostring(root, encoding='unicode', method='xml')
+    randomized_path = change_scene(robot_model + '_' + str(rank) + '.xacro.xml')
+    with open(randomized_path, 'wb') as fp:
+        fp.write(xml.encode())
+        fp.flush()
+    return randomized_path
+
 
 
 for headlessness in ["Graphical", "Headless"]:

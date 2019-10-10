@@ -4,10 +4,12 @@ import time
 import pybullet_data
 import numpy as np
 import os.path as osp
-from gym_ergojr import get_scene
+from gym_ergojr import get_scene, mpi_loading
 from gym_ergojr.utils.libstfu import stdout_redirected, stdout_noop
 from gym_ergojr.utils.urdf_helper import URDF
 from xml.etree import ElementTree as et
+import os
+
 
 NORM_VEL = {"default": 18, "heavy": 38}
 MAX_VEL = {"default": 18, "heavy": 1000}  # not measured, but looks about right
@@ -17,6 +19,7 @@ MOTOR_DIRECTIONS_DEFAULT = [1, -1, -1, 1, -1,
 MOTOR_DIRECTIONS_PUSHER = [1, 1, 1]  # how do the motors turn on real pusher
 NAMESPACE = {'xacro': 'http://www.ros.org/wiki/xacro'}  # add more as needed
 et.register_namespace("xacro", NAMESPACE["xacro"])
+_ROOT = os.path.abspath(os.path.dirname(__file__))
 
 
 class AbstractRobot():
@@ -83,16 +86,15 @@ class AbstractRobot():
             if self.new_backlash is not None:
                 robot_file = self.update_backlash(xml_path)
             else:
-                robot_file = URDF(xml_path, force_recompile=True).get_path()
+                robot_file = URDF(xml_path, force_recompile=False).get_path()
 
             robot_id = p.loadURDF(
                 robot_file, startPos, startOrientation, useFixedBase=1)
             self.robots.append(robot_id)
 
-            if self.debug:
-                print(robot_model)
-                for i in range(p.getNumJoints(robot_id)):
-                    print(p.getJointInfo(robot_id, i))
+            # if self.debug:
+            #     for i in range(p.getNumJoints(robot_id)):
+            #         print(p.getJointInfo(robot_id, i))
 
         return robot_id
 
@@ -273,8 +275,9 @@ class AbstractRobot():
 
 class PusherRobot():
 
-    def __init__(self, debug=False, frequency=100, silent=False):
+    def __init__(self, rank, debug=False, frequency=100, silent=False):
         self.debug = debug
+        self.rank = rank
         self.frequency = frequency
         self.output_handler = stdout_noop
 
@@ -313,18 +316,17 @@ class PusherRobot():
         # rotating a standing cylinder around the y axis, puts it flat onto the x axis
 
         with self.output_handler():
-            xml_path = get_scene(robot_model)
-
-            robot_file = URDF(xml_path, force_recompile=True).get_path()
+            xml_new_path = mpi_loading(self.rank, robot_model)
+            robot_file = URDF(xml_new_path, force_recompile=False).get_path()
 
             robot_id = p.loadURDF(
                 robot_file, startPos, startOrientation, useFixedBase=1)
             self.robot = robot_id
 
-            if self.debug:
-                print(robot_model)
-                for i in range(p.getNumJoints(robot_id)):
-                    print(p.getJointInfo(robot_id, i))
+            # if self.debug:
+            #     print(robot_model)
+            #     for i in range(p.getNumJoints(robot_id)):
+            #         print(p.getJointInfo(robot_id, i))
 
         return robot_id
 
@@ -343,6 +345,8 @@ class PusherRobot():
             raise Exception(
                 "the value '{}' should either be float, int or list but it's {}"
                 .format(val, type(val)))
+
+
 
     def act(self, actions, max_force=None, max_vel=None, positionGain=None):
         actions = np.array(actions) + np.array(self.rest_pos[:3])
@@ -425,7 +429,10 @@ class PusherRobot():
         p.setGravity(0, 0, -10)
         p.setTimeStep(1 / self.frequency)
         p.setRealTimeSimulation(0)
-        p.loadURDF(URDF(get_scene("plane")).get_path())
+        # p.loadURDF(URDF(get_scene("plane")).get_path())
+        new_plane_path = mpi_loading(self.rank, "plane")
+        p.loadURDF(URDF(new_plane_path).get_path())
+        print(self.rank)
         self.addModel("ergojr-pusher")
 
 

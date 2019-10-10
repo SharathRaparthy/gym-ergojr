@@ -6,8 +6,10 @@ from tqdm import tqdm
 
 from gym_ergojr.sim.abstract_robot import PusherRobot
 from gym_ergojr.sim.objects import Puck
+from mpi4py import MPI
 
-GOAL_REACHED_DISTANCE = 0.01
+
+GOAL_REACHED_DISTANCE = 0.05
 RESTART_EVERY_N_EPISODES = 1000
 
 
@@ -16,14 +18,17 @@ class ErgoPusherEnv(gym.Env):
     def __init__(self, headless=False):
 
         self.goals_done = 0
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
         self.is_initialized = False
-
-        self.robot = PusherRobot(debug=not headless)
-        self.puck = Puck()
+        self.rank = rank
+        self.robot = PusherRobot(self.rank, debug=not headless)
+        self.puck = Puck(self.rank)
 
         self.episodes = 0  # used for resetting the sim every so often
 
         self.metadata = {'render.modes': ['human']}
+        self.reward_type = 'sparse'
 
         # observation = 3 joints + 3 velocities + 2 puck position + 2 coordinates for target
         self.observation_space = spaces.Box(
@@ -31,7 +36,7 @@ class ErgoPusherEnv(gym.Env):
 
         # action = 3 joint angles
         self.action_space = spaces.Box(
-            low=-1, high=1, shape=(3,), dtype=np.float32)  #
+            low=-1, high=1, shape=(3,), dtype=np.float32)
 
     def seed(self, seed=None):
         return [np.random.seed(seed)]
@@ -43,7 +48,13 @@ class ErgoPusherEnv(gym.Env):
         reward, done, dist = self._getReward()
 
         obs = self._get_obs()
-        return obs, reward, done, {"distance": dist}
+
+        success = self._is_success(obs['achieved_goal'],obs['desired_goal'])
+        info = {
+            'is_success': success, "distance": dist
+        }
+        return obs, reward, done, info
+
 
     def _getReward(self):
         done = False
@@ -51,12 +62,16 @@ class ErgoPusherEnv(gym.Env):
         reward = self.puck.dbo.query()
         distance = reward.copy()
 
-        reward *= -1  # the reward is the inverse distance
+        if self.reward_type == 'sparse':
+            reward = -(distance > GOAL_REACHED_DISTANCE).astype(np.float32)
+        else:
+            reward *= -1  # the reward is the inverse distance
         if distance < GOAL_REACHED_DISTANCE:  # this is a bit arbitrary, but works well
             done = True
             reward = 1
 
         return reward, done, distance
+
 
     def reset(self, forced=False):
         self.episodes += 1
@@ -83,7 +98,14 @@ class ErgoPusherEnv(gym.Env):
             self.puck.normalize_puck(),
             self.puck.normalize_goal()
         ])
-        return obs
+        return {'observation': obs[:6].copy(),
+                'achieved_goal': obs[6:8].copy(),
+                'desired_goal': obs[8:].copy()}
+
+    def _is_success(self, achieved_goal, desired_goal):
+        assert achieved_goal.shape == desired_goal.shape
+        d = np.linalg.norm(achieved_goal - desired_goal,  axis=-1)
+        return (d < GOAL_REACHED_DISTANCE).astype(np.float32)
 
     def render(self, mode='human', close=False):
         pass
@@ -121,8 +143,10 @@ if __name__ == '__main__':
             obs, rew, done, misc = env.step(action)
 
             if MODE == "manual":
-                print("act {}, obs {}, rew {}, done {}".format(
-                    action, obs, rew, done))
+                # print("act {}, obs {}, rew {}, done {}".format(
+                #     action, obs, rew, done))
+                # print(misc )
+                print(obs)
                 time.sleep(0.01)
 
             if MODE == "timings":
@@ -137,4 +161,6 @@ if __name__ == '__main__':
 
             if done:
                 env.reset()
+
+
                 break
