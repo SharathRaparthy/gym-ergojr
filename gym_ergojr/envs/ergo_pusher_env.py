@@ -98,7 +98,7 @@ class ErgoPusherEnv(gym.Env):
             self.puck.normalize_puck(),
             self.puck.normalize_goal()
         ])
-        return {'observation': obs[:6].copy(),
+        return {'observation': obs.copy(),
                 'achieved_goal': obs[6:8].copy(),
                 'desired_goal': obs[8:].copy()}
 

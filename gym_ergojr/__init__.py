@@ -1,7 +1,9 @@
 import os
 
 from gym.envs.registration import register
+from xml.etree import ElementTree as et
 
+_ROOT = os.path.abspath(os.path.dirname(__file__))
 def get_scene(name):
     return os.path.join(_ROOT, "scenes", name)
 
@@ -21,8 +23,6 @@ def mpi_loading(rank, robot_model):
         fp.write(xml.encode())
         fp.flush()
     return randomized_path
-
-
 
 for headlessness in ["Graphical", "Headless"]:
     headlessness_switch = True if headlessness == "Headless" else False
