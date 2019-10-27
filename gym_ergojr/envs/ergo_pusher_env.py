@@ -3,7 +3,7 @@ import gym
 import numpy as np
 from gym import spaces
 from tqdm import tqdm
-
+import os
 from gym_ergojr.sim.abstract_robot import PusherRobot
 from gym_ergojr.sim.objects import Puck
 from mpi4py import MPI
@@ -18,10 +18,19 @@ class ErgoPusherEnv(gym.Env):
     def __init__(self, headless=False):
 
         self.goals_done = 0
-        comm = MPI.COMM_WORLD
-        rank = comm.Get_rank()
+        use_mpi = False
+        use_slurm_array = True
+        if use_mpi:
+            comm = MPI.COMM_WORLD
+            rank = comm.Get_rank()
+            self.rank = rank
+        elif use_slurm_array:
+            jobid = os.environ['SLURM_ARRAY_TASK_ID']
+            self.rank = jobid
+        else:
+            self.rank = 0
         self.is_initialized = False
-        self.rank = rank
+
         self.robot = PusherRobot(self.rank, debug=not headless)
         self.puck = Puck(self.rank)
 

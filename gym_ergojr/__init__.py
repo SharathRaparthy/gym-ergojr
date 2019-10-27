@@ -4,6 +4,8 @@ from gym.envs.registration import register
 from xml.etree import ElementTree as et
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
+
+
 def get_scene(name):
     return os.path.join(_ROOT, "scenes", name)
 
@@ -12,7 +14,7 @@ def change_scene(name):
     return os.path.join(_ROOT, "scenes", name)
 
 
-def mpi_loading(rank, robot_model):
+def create_xml(rank, robot_model):
     xml_path = get_scene(robot_model)
     if robot_model is not None:
         reference_path = et.parse(xml_path + '.xacro.xml')

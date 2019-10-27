@@ -4,7 +4,7 @@ import time
 import pybullet_data
 import numpy as np
 import os.path as osp
-from gym_ergojr import get_scene, mpi_loading
+from gym_ergojr import get_scene, create_xml
 from gym_ergojr.utils.libstfu import stdout_redirected, stdout_noop
 from gym_ergojr.utils.urdf_helper import URDF
 from xml.etree import ElementTree as et
@@ -316,7 +316,7 @@ class PusherRobot():
         # rotating a standing cylinder around the y axis, puts it flat onto the x axis
 
         with self.output_handler():
-            xml_new_path = mpi_loading(self.rank, robot_model)
+            xml_new_path = create_xml(self.rank, robot_model)
             robot_file = URDF(xml_new_path, force_recompile=False).get_path()
 
             robot_id = p.loadURDF(
@@ -430,7 +430,7 @@ class PusherRobot():
         p.setTimeStep(1 / self.frequency)
         p.setRealTimeSimulation(0)
         # p.loadURDF(URDF(get_scene("plane")).get_path())
-        new_plane_path = mpi_loading(self.rank, "plane")
+        new_plane_path = create_xml(self.rank, "plane")
         p.loadURDF(URDF(new_plane_path).get_path())
         print(self.rank)
         self.addModel("ergojr-pusher")

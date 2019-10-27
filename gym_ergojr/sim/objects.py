@@ -3,7 +3,7 @@ from gym_ergojr.utils.pybullet import DistanceBetweenObjects
 from gym_ergojr.utils.urdf_helper import URDF
 import pybullet as p
 import numpy as np
-from gym_ergojr import get_scene, mpi_loading
+from gym_ergojr import get_scene, create_xml
 
 PUSHER_GOAL_X = [-.2, -.1]
 PUSHER_GOAL_Y = [-.1, .05]
@@ -65,7 +65,7 @@ class Puck(object):
         self.target = None
         self.goal = None
         self.obj_visual = None
-        xml_new_path = mpi_loading(self.rank, "ergojr-pusher-puck")
+        xml_new_path = create_xml(self.rank, "ergojr-pusher-puck")
         self.robot_file = URDF(xml_new_path, force_recompile=False).get_path()
 
         # # GYM env has to do this
